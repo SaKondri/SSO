@@ -1,0 +1,36 @@
+version: '3'
+services:
+
+  redis:
+    image: redis:latest
+    container_name: SSO-Redis
+    ports:
+      - "6379:6379"
+
+  keycloak:
+    container_name: SSO-Keycloak
+    image: quay.io/keycloak/keycloak:22.0.5
+    command: [ "start-dev" ]
+    environment:
+      DB_VENDOR: MYSQL
+      DB_ADDR: mysql
+      DB_DATABASE: keycloak1
+      DB_USER: keycloak
+      DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak-mysql
+
+  keycloak-mysql:
+    container_name: SSO-keycloak-mysql
+    image: mysql:8.2.0
+    volumes:
+      - ./mysql_keycloak_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak1
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
