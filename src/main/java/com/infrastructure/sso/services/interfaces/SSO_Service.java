@@ -36,7 +36,7 @@ public interface SSO_Service {
 
     void resetPassword() throws IOException, InterruptedException;
 
-    void deleteUser() throws IOException, InterruptedException;
+    void deleteUser(UserInformation userInformation) throws IOException, InterruptedException;
 
     List<GroupDto> getGroups() throws IOException, InterruptedException;
 }

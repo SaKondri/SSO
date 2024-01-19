@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class KeycloakRestServiceTest {
+class KeycloakRestTest {
 
 
     @LocalServerPort
@@ -193,6 +193,18 @@ class KeycloakRestServiceTest {
 
     @Test
     @Order(7)
+    void deleteUser(){
+
+        listOfUser.forEach(userInformation -> {
+            HttpEntity<?> httpEntity = new HttpEntity<Object>(userInformation,authorizationHeader());
+            String api = userManagementAddress+"/deleteUser";
+            ResponseEntity<Void> response = restTemplate.exchange(api, HttpMethod.DELETE, httpEntity, Void.class);
+            assertEquals(response.getStatusCode().value() ,201);
+        });
+    }
+
+    @Test
+    @Order(8)
     void signOut(){
         String api = authAddress+"/signOut";
         String header = token.getAccess_token().replace("Bearer " , "");

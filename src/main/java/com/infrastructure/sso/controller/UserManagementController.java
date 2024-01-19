@@ -28,12 +28,6 @@ public class UserManagementController {
     private final SSO_Service sso_service;
 
 
-    @GetMapping("/test")
-    @PreAuthorize("hasAnyAuthority('createUser')")
-    public void test(){
-        System.out.println("test call");
-    }
-
     @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/addUser")
     @PreAuthorize("hasAnyAuthority('createUser')")
@@ -77,5 +71,13 @@ public class UserManagementController {
     public List<GroupDto> getGroups() throws IOException, InterruptedException {
         List<GroupDto> groups = sso_service.getGroups();
         return groups;
+    }
+
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @DeleteMapping("/deleteUser")
+    @PreAuthorize("hasAnyAuthority('createUser')")
+    public void deleteUser(@RequestBody UserInformation userInformation) throws IOException, InterruptedException {
+        sso_service.deleteUser(userInformation);
     }
 }

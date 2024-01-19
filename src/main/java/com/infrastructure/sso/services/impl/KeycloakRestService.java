@@ -308,19 +308,19 @@ public class KeycloakRestService implements SSO_Service {
     }
 
     @Override
-    public void deleteUser() throws IOException, InterruptedException {
+    public void deleteUser(UserInformation userInformation) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/admin/realms/testrealm/users/d0375203-631f-4c32-8fad-bc4482be3c29"))
+                .uri(URI.create(allThisApplicationUsers+"/"+userInformation.getId()))
                 .DELETE()
                 .setHeader("Content-Type", "application/json")
-                .setHeader("Authorization", "bearer " + System.getenv("access_token"))
+                .setHeader("Authorization", "bearer " + adminLogin().getAccess_token())
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-
+       log.debug(userInformation.getId()+" for delete and response from server: "+response.body());
     }
 
     @Override
