@@ -37,11 +37,11 @@ public class JwtUtils {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
     @Value("${keyCloakPublicKey}")
-    private String keyClockPublicKey;
+    private String keyCloakPublicKey;
 
     public Claims decodeToken(String token) throws NoSuchAlgorithmException, InvalidKeySpecException {
 
-        byte[] publicBytes = java.util.Base64.getDecoder().decode(keyClockPublicKey.getBytes());
+        byte[] publicBytes = java.util.Base64.getDecoder().decode(keyCloakPublicKey.getBytes());
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PublicKey pubKey = keyFactory.generatePublic(keySpec);

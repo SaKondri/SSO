@@ -133,8 +133,8 @@ public class KeycloakRestService implements SSO_Service {
             Token token = jwtUtils.getToken(response.body());
             return token;
         }
-        log.warn("KeyClock error cannot add new user. Try again" +response.body());
-        throw new RuntimeException("KeyClock error cannot add new user. Try again");
+        log.warn("keycloak error cannot add new user. Try again" +response.body());
+        throw new RuntimeException("keycloak error cannot add new user. Try again");
     }
 
     private List<GroupDto> selectedGroup(UserInformationForEdit userInformationForEdit){

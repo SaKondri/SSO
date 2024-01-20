@@ -66,14 +66,14 @@ class KeycloakRestTest {
 
     @Test
     @Order(0)
-    void keyClockAdmin_AddAdminUser() throws IOException, InterruptedException {
+    void keycloakAdmin_AddAdminUser() throws IOException, InterruptedException {
         UserInformation userInformation = UserInformation.builder()
                 .username("saeedKondri")
                 .email("saeid.kondri@gmail.com")
                 .firstName("sa")
                 .lastName("am")
                 .enabled(true)
-                .groups(new ArrayList<>(Arrays.asList("admin" , "manger" ))) // "admin" and "manger" These Roles must add in RealmRoles section in KeyClock otherwise you cannot add user
+                .groups(new ArrayList<>(Arrays.asList("admin" , "manger" ))) // "admin" and "manger" These Roles must add in RealmRoles section in keycloak otherwise you cannot add user
                 .build();
         Attributes attributes= Attributes.builder()
                 .address(new ArrayList<>(Arrays.asList("Iran")))
@@ -130,7 +130,7 @@ class KeycloakRestTest {
                 .enabled(true)
                 .firstName("saeed")
                 .lastName("amini")
-                .groups(new ArrayList<>(Arrays.asList("admin" , "manger" ))) // "admin" and "manger" These Roles must add in RealmRoles section in KeyClock otherwise you cannot add user
+                .groups(new ArrayList<>(Arrays.asList("admin" , "manger" ))) // "admin" and "manger" These Roles must add in RealmRoles section in keycloak otherwise you cannot add user
                 .build();
         Attributes attributes= Attributes.builder()
                 .address(new ArrayList<>(Arrays.asList("Iran")))
