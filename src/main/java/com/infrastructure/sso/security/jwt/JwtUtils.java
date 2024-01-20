@@ -36,7 +36,7 @@ public class JwtUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    @Value("${keyClockPublicKey}")
+    @Value("${keyCloakPublicKey}")
     private String keyClockPublicKey;
 
     public Claims decodeToken(String token) throws NoSuchAlgorithmException, InvalidKeySpecException {

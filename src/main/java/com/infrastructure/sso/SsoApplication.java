@@ -53,7 +53,7 @@ public class SsoApplication {
 
     @Bean
     public CommandLineRunner init(
-            @Value("${keyClockPublicKey}") String key,
+            @Value("${keyCloakPublicKey}") String key,
             @Autowired JwtUtils JwtUtils,
             @Autowired SSO_Service sso_service
             ){
