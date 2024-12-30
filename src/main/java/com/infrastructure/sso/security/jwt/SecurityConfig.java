@@ -104,7 +104,9 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/api/auth/signin" ,
                         "/api/auth/refreshtoken" ,
-                        "/api/auth/signOut"
+                        "/sso/api/auth/refreshtoken",
+                        "/api/auth/signOut",
+                        "/api/UserManagement/changePassword"
                 ).permitAll()
                 .anyRequest().authenticated();
         // @formatter:on
@@ -112,10 +114,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    @Bean
-    public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter();
-    }
+    // todo jwt filter
+//    @Bean
+//    public AuthTokenFilter authenticationJwtTokenFilter() {
+//        return new AuthTokenFilter();
+//    }
 
     private CorsConfigurationSource corsConfigurationSource() {
         // Very permissive CORS config...

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -14,7 +15,7 @@ import java.util.ArrayList;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Attributes{
+public class Attributes implements Serializable {
     private ArrayList<String> address;
     private ArrayList<String> phone;
     private ArrayList<String> zipCode;

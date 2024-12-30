@@ -1,49 +1,35 @@
 package com.infrastructure.sso;
 
 import com.infrastructure.sso.security.jwt.JwtUtils;
-
+import com.infrastructure.sso.security.jwt.filter.SignOutCheck;
 import com.infrastructure.sso.services.interfaces.SSO_Service;
+import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.context.annotation.Bean;
-
+import org.springframework.core.env.AbstractEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
-import javax.crypto.Cipher;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.*;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.RSAPublicKeySpec;
-
-import java.util.Base64;
-import java.math.BigInteger;
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
-
-
-/**
- * @author SaKondri
- */
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.stream.StreamSupport;
 
 @SpringBootApplication
-
+@EnableScheduling
 public class SsoApplication {
 
     @Bean
     public ServletListenerRegistrationBean<HttpSessionEventPublisher> httpSessionEventPublisher() {
-        return new ServletListenerRegistrationBean<HttpSessionEventPublisher>(new HttpSessionEventPublisher());
+        return new ServletListenerRegistrationBean(new HttpSessionEventPublisher());
     }
 
     public static void main(String[] args) {
@@ -55,11 +41,24 @@ public class SsoApplication {
     public CommandLineRunner init(
             @Value("${keyCloakPublicKey}") String key,
             @Autowired JwtUtils JwtUtils,
-            @Autowired SSO_Service sso_service
+            @Autowired SSO_Service sso_service,
+            @Autowired Environment env
             ){
         return args -> {
-          // jwtUtils.validateJwtToken("eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJjaVcycUVISDJkb2pQQVh1M2w5dW1Tb3A1S2I2emJ1QmJDVnhQTVFpcGhNIn0.eyJleHAiOjE3MDQ4MzEzNTAsImlhdCI6MTcwNDgzMTA1MCwianRpIjoiMTBiMmU0MWYtODY2Yi00YjJmLTg2OTctZmQ5NTM4ODNkNDQ4IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy93ZWJBcHBsaWNhdGlvbiIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiJjOWE3YmJlYi1iYjcwLTQ5ZmUtOTBmMC03NDU3ZDg5ZTM1NzAiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJteUFwcCIsInNlc3Npb25fc3RhdGUiOiI4MDdlODI4MS0xMzZlLTQxNGQtYmNhMy1iODBkZDJmYjAxNGMiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbIi8qIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyIzMyIsIjQ0IiwiZGVmYXVsdC1yb2xlcy13ZWJhcHBsaWNhdGlvbiIsIm9mZmxpbmVfYWNjZXNzIiwiY3JlYXRlVXNlciIsInVtYV9hdXRob3JpemF0aW9uIiwic2hvd1VzZXJzIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiIiLCJzaWQiOiI4MDdlODI4MS0xMzZlLTQxNGQtYmNhMy1iODBkZDJmYjAxNGMiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzYWVlZGFtaW5pIiwiZW1haWwiOiJteWVtYWlsQGdtYWlsLmNvbSJ9.NmbnMX1YVMAnqfAiHhUMl2vE4wWEJaIfpq3930hhHKRUkZqnw2DYW9WBP7oYI__SBkigsEYn_gJLCADfvyx-uWrvaRzOApKI8Xec4CFMiffXIWFaJAopgFA4awDHuPw9K6WV8KGDrEQa3dljXFHsuyaxsAGiaKPTYHMg3jIunKfhK3-JwtgbZ6mpZIm5oBd7fgPa3IhZ7LLWVKbCWl-yazS0u_hSQiGpSgfN4xlx7eZZC0J_3REDMOtUhmj-qMZzDjFhdSPnfeevXWyxjeCi_23V3dICnmHR7V_pypVLGYGPO22hBlyVEQ5JhRQAjJV-JNWzsQbyRr2aB4Ato2-l-w");
+            boolean valid = JwtUtils.isValidRefreshTokenTime("eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJiZGM1NzFhOS05MDcxLTRjZGUtYTU2Yy0yYjNmMmU0YjUzZWMifQ.eyJleHAiOjE3MjIyNTE5MTEsImlhdCI6MTcyMjI1MDExMSwianRpIjoiYzgwZTIxMzUtM2I5Zi00YTE0LTg2YjMtNjBmZThiYjVkMTAzIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy93ZWJBcHBsaWNhdGlvbiIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MC9yZWFsbXMvd2ViQXBwbGljYXRpb24iLCJzdWIiOiI0NmU3NjBjZi02OThhLTRhNTEtOTAzYS1lOGQ3NTJjNDA1YTMiLCJ0eXAiOiJSZWZyZXNoIiwiYXpwIjoibXlBcHAiLCJzZXNzaW9uX3N0YXRlIjoiZWU0NjM4ZTQtZmY0MC00MDA1LTkzY2ItZmFiZTY0NDgwYmY5Iiwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwic2lkIjoiZWU0NjM4ZTQtZmY0MC00MDA1LTkzY2ItZmFiZTY0NDgwYmY5In0.jSPP0TeijdRt2_bE_tSVOB41UkgK6Y_RmY2FRHwnVJE");
+           //JwtUtils.decodeRefreshToken("eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJiZGM1NzFhOS05MDcxLTRjZGUtYTU2Yy0yYjNmMmU0YjUzZWMifQ.eyJleHAiOjE3MjIyNDIyODgsImlhdCI6MTcyMjI0MDQ4OCwianRpIjoiZTU3ZDJlYWYtMDI0Mi00Mzg1LWEwYjgtNjljMGNkZTBjODA5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy93ZWJBcHBsaWNhdGlvbiIsImF1ZCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MC9yZWFsbXMvd2ViQXBwbGljYXRpb24iLCJzdWIiOiI0NmU3NjBjZi02OThhLTRhNTEtOTAzYS1lOGQ3NTJjNDA1YTMiLCJ0eXAiOiJSZWZyZXNoIiwiYXpwIjoibXlBcHAiLCJzZXNzaW9uX3N0YXRlIjoiNjc2ZjU4ZmYtZDExMi00NDU1LThhNDAtNGNkNTRlZjJkNTQ5Iiwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwic2lkIjoiNjc2ZjU4ZmYtZDExMi00NDU1LThhNDAtNGNkNTRlZjJkNTQ5In0.qYZgjsLQDe0r7kp6euvh9tX7_2YvwDdPsAnGJUiSapI");
+            System.out.println(valid);
         };
     }
+
+//    @Bean
+//    public FilterRegistrationBean<SignOutCheck> loggingFilter(){
+//        FilterRegistrationBean<SignOutCheck> registrationBean = new FilterRegistrationBean<>();
+//
+//        registrationBean.setFilter(new SignOutCheck());
+//        registrationBean.addUrlPatterns("/*");
+//       // registrationBean.setOrder(2);
+//        return registrationBean;
+//    }
 
 }

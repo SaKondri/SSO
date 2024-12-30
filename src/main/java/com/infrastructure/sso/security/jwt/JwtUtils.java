@@ -7,20 +7,23 @@ import com.infrastructure.sso.dto.TokenDetails;
 import com.infrastructure.sso.services.interfaces.TokenService;
 import io.jsonwebtoken.*;
 import lombok.AllArgsConstructor;
+import org.apache.commons.codec.digest.HmacUtils;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
-import org.apache.commons.codec.binary.Base64;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -47,6 +50,28 @@ public class JwtUtils {
         PublicKey pubKey = keyFactory.generatePublic(keySpec);
        Claims claims =  Jwts.parser().setSigningKey(pubKey).parseClaimsJws(token).getBody();
        return claims;
+    }
+
+
+    public Integer getExpTimeFromRefreshToken(String refreshToken){
+        String[] chunks = refreshToken.split("\\.");
+        java.util.Base64.Decoder  decoder = Base64.getUrlDecoder();
+
+        String payload = new String(decoder.decode(chunks[1]));
+        final JSONObject obj = new JSONObject(payload);
+        Integer exp = (Integer) obj.get("exp");
+        return exp;
+    }
+
+    public boolean isValidRefreshTokenTime(String refreshToken){
+        Integer exp =  getExpTimeFromRefreshToken(refreshToken);
+        Date currentDate = new Date();
+        Date calculateDate = new Date(exp * 1000l);
+        if(calculateDate.getTime() >= currentDate.getTime()){
+            return true;
+        }else {
+            return false;
+        }
     }
 
     public TokenDetails getTokenDetails(String string) throws NoSuchAlgorithmException, InvalidKeySpecException {

@@ -4,7 +4,10 @@ package com.infrastructure.sso.services.interfaces;
 import com.infrastructure.sso.dto.GroupDto;
 import com.infrastructure.sso.dto.Token;
 import com.infrastructure.sso.dto.UserInformationForEdit;
+import com.infrastructure.sso.dto.req.RealmRoles;
+import com.infrastructure.sso.dto.req.UsernamePasswordDto;
 import com.infrastructure.sso.dto.req.user.UserInformation;
+import com.infrastructure.sso.dto.resp.UserInformationForGroupReq;
 import jakarta.annotation.PostConstruct;
 
 import java.io.IOException;
@@ -34,9 +37,17 @@ public interface SSO_Service {
 
     List<UserInformation> showUsers() throws IOException, InterruptedException;
 
-    void resetPassword() throws IOException, InterruptedException;
+    String resetPassword(UsernamePasswordDto usernamePasswordDto) throws IOException, InterruptedException;
 
     void deleteUser(UserInformation userInformation) throws IOException, InterruptedException;
 
     List<GroupDto> getGroups() throws IOException, InterruptedException;
+    List<UserInformationForGroupReq> getGroupsWithMember(String groupId ) ;
+
+    List<RealmRoles> getRealmRoles() throws IOException, InterruptedException;
+
+    List<RealmRoles> getActivityByRoleId(String groupId) throws IOException, InterruptedException;
+
+    void addRoleMapping(GroupDto groupDto , List<RealmRoles> roles) throws IOException, InterruptedException;
+    void removeRoleMapping(GroupDto groupDto , List<RealmRoles> roles) throws IOException, InterruptedException;
 }

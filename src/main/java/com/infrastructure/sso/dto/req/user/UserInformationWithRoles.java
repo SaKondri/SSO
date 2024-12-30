@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -16,7 +15,7 @@ import java.util.ArrayList;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserInformation implements Serializable {
+public class UserInformationWithRoles {
     private String id;
     private String username;
     private String firstName;
@@ -25,7 +24,7 @@ public class UserInformation implements Serializable {
     private ArrayList<Credential> credentials;
     private boolean enabled;
     private ArrayList<String> groups;
-    //private ArrayList<KeyCloakRoleDto> roles;
+    private ArrayList<KeyCloakRoleDto> roles;
     private Attributes attributes;
 }
 

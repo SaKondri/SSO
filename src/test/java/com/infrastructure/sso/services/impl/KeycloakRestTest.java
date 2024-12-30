@@ -168,8 +168,8 @@ class KeycloakRestTest {
 
     @Test
     @Order(5)
-    void showUsers(){
-        String api = userManagementAddress+"/showUsers";
+    void getUsers(){
+        String api = userManagementAddress+"/getUsers";
         ResponseEntity<UserInformation[]> entity = restTemplate.exchange(
                 api, HttpMethod.GET, new HttpEntity<>(authorizationHeader()),
                 UserInformation[].class);

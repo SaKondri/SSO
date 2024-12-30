@@ -2,12 +2,12 @@ package com.infrastructure.sso.services.impl;
 
 import com.infrastructure.sso.dto.Token;
 import com.infrastructure.sso.dto.TokenDetails;
-import com.infrastructure.sso.repository.TokenRepository;
+import com.infrastructure.sso.repository.cache.TokenRepository;
 import com.infrastructure.sso.security.jwt.JwtUtils;
 import com.infrastructure.sso.services.interfaces.TokenService;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Component;
 
 import java.security.NoSuchAlgorithmException;
@@ -19,6 +19,7 @@ import java.util.List;
  */
 @Component
 @RequiredArgsConstructor
+@Log4j2
 public class TokenServiceImpl implements TokenService {
 
     private final TokenRepository tokenRepository;
@@ -28,7 +29,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public void removeWhenHasToken(Token token) throws NoSuchAlgorithmException, InvalidKeySpecException {
        TokenDetails parseToken = jwtUtils.getTokenDetails(token.getAccess_token());
-
+        log.debug("remove token" , token);
        if(parseToken != null){
            Token cachedToken = tokenRepository.findByUsername(parseToken.getPreferred_username());
            if(cachedToken != null){
@@ -44,6 +45,8 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public Token save(Token token){
+        log.debug("i want save" +token.getUsername());
+        log.debug("i want save {}" , token);
       return tokenRepository.save(token);
     }
 
@@ -87,6 +90,6 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void deleteUsername(String username) {
-        tokenRepository.removeByUsername(username);
+        tokenRepository.deleteByUsername(username);
     }
 }

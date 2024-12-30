@@ -2,15 +2,27 @@ package com.infrastructure.sso.services.impl;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.infrastructure.sso.dto.GroupDto;
+import com.infrastructure.sso.dto.RealmMappings;
 import com.infrastructure.sso.dto.Token;
 import com.infrastructure.sso.dto.UserInformationForEdit;
+import com.infrastructure.sso.dto.req.RealmRoles;
+import com.infrastructure.sso.dto.req.UsernamePasswordDto;
 import com.infrastructure.sso.dto.req.user.UserInformation;
+import com.infrastructure.sso.dto.resp.UserInformationForGroupReq;
 import com.infrastructure.sso.security.jwt.JwtUtils;
+import com.infrastructure.sso.services.cache.GroupCacheService;
+import com.infrastructure.sso.services.cache.UserCacheService;
 import com.infrastructure.sso.services.interfaces.SSO_Service;
 import com.infrastructure.sso.utils.ConvertJsonArrayToList;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -19,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import com.google.common.base.Strings;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -42,9 +53,17 @@ import java.util.List;
 @Log4j2
 public class KeycloakRestService implements SSO_Service {
 
+
+    private final GroupCacheService groupCacheService;
+
     private final RestTemplate restTemplate;
 
     private final JwtUtils jwtUtils;
+
+    private final UserCacheService userCacheService;
+
+    @Value("${realmRoles}")
+    private String realmRolesUrl;
 
     @Value("${allThisApplicationUsers}")
     private String allThisApplicationUsers;
@@ -71,6 +90,9 @@ public class KeycloakRestService implements SSO_Service {
     private String allThisApplicationRoleGroup;
 
     @Override
+    //@CircuitBreaker(name = "sso")
+    //@TimeLimiter(name = "sso")
+   // @Retry(name = "sso")
     public Token login(String username, String password) {
         log.debug("call Login for username {} " , username);
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
@@ -117,7 +139,7 @@ public class KeycloakRestService implements SSO_Service {
     public Token adminLogin() throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         log.debug("Admin Login Start. ");
-        String credentials = "admin-cli" + ":" + "17XltshmI3NS7oszVzYKigchmUBJcojU";
+        String credentials = "admin-cli" + ":" + "vkg69S1w4OYLNCT8eh96xZ3ERymJJKgq";
         String auth = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -133,7 +155,7 @@ public class KeycloakRestService implements SSO_Service {
             Token token = jwtUtils.getToken(response.body());
             return token;
         }
-        log.warn("keycloak error cannot add new user. Try again" +response.body());
+        log.warn("keycloak error cannot admin login. Try again" +response.body());
         throw new RuntimeException("keycloak error cannot add new user. Try again");
     }
 
@@ -207,6 +229,7 @@ public class KeycloakRestService implements SSO_Service {
             log.warn("Cannot edit new user because " +response.body());
             throw new RuntimeException("Cannot edit new user because "+response.body());
         }
+
         log.info("edit user done. and " + response.body() );
     }
 
@@ -275,36 +298,51 @@ public class KeycloakRestService implements SSO_Service {
     @Override
     public List<UserInformation> showUsers() throws IOException, InterruptedException {
         log.debug("showUsers call." );
-        HttpClient client = HttpClient.newHttpClient();
-        Token adminToken = adminLogin();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(allThisApplicationUsers))
-                .GET()
-                .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
-                .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        //List<UserInformation> users = userCacheService.getAllUser();
+        List<UserInformation> users = null;
+           if(users == null){
+            HttpClient client = HttpClient.newHttpClient();
+            Token adminToken = adminLogin();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(allThisApplicationUsers))
+                    .GET()
+                    .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        List<UserInformation> result = new ConvertJsonArrayToList().convertJsonArrayUsingGsonLibrary(response.body());
-        if(response.statusCode() != 200){
-            log.warn("Show user error" +response.body());
-            throw new RuntimeException("Show user error because "+response.body());
+            List<UserInformation> result = new ConvertJsonArrayToList().convertJsonArrayUsingGsonLibrary(response.body());
+            if(response.statusCode() != 200){
+                log.warn("Show user error" +response.body());
+                throw new RuntimeException("Show user error because "+response.body());
+            }
+            // Map<String , UserInformation> usersMap= result.stream().collect(Collectors.toMap(UserInformation::getUsername, Function.identity()));
+            userCacheService.addAllUser(result);
+            return result;
+        }else {
+            return users;
         }
-        // Map<String , UserInformation> usersMap= result.stream().collect(Collectors.toMap(UserInformation::getUsername, Function.identity()));
-        return result;
+
     }
 
     @Override
-    public void resetPassword() throws IOException, InterruptedException {
+    public String resetPassword(UsernamePasswordDto usernamePasswordDto) throws IOException, InterruptedException {
+       List<UserInformation> users =  showUsers();
+        UserInformation result = users.stream().filter(user -> usernamePasswordDto.getUsername().equals(user.getUsername())).findAny().orElse(null);
         HttpClient client = HttpClient.newHttpClient();
 
+        String body = """
+                { "type": "password", "temporary": false, "value":" """;
+        body = body + usernamePasswordDto.getPassword()+ "\"}";
+
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/admin/realms/testrealm/users/d0375203-631f-4c32-8fad-bc4482be3c29/reset-password"))
-                .PUT(HttpRequest.BodyPublishers.ofString("{ \"type\": \"password\", \"temporary\": false, \"value\": \"my-new-password\" }"))
+                .uri(URI.create(allThisApplicationUsers+"/"+result.getId()+"/reset-password"))
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
                 .setHeader("Content-Type", "application/json")
-                .setHeader("Authorization", "bearer " + System.getenv("access_token"))
+                .setHeader("Authorization", "bearer " + adminLogin().getAccess_token())
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+       return response.body();
     }
 
     @Override
@@ -326,21 +364,146 @@ public class KeycloakRestService implements SSO_Service {
     @Override
     public List<GroupDto> getGroups() throws IOException, InterruptedException {
         log.debug("getGroups call." );
+        List<GroupDto> resultCache = groupCacheService.getAllGroupsById();
+        //List<GroupDto> resultCache =null;
+        if(resultCache == null){
+            HttpClient client = HttpClient.newHttpClient();
+            Token adminToken = adminLogin();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(allThisApplicationRoleGroup))
+                    .GET()
+                    .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            List<GroupDto> result = new ConvertJsonArrayToList().convertJsonArrayToGroup(response.body());
+            if(response.statusCode() != 200){
+                log.warn("Show groups error" +response.body());
+                throw new RuntimeException("Show groups error because "+response.body());
+            }
+            // Map<String , UserInformation> usersMap= result.stream().collect(Collectors.toMap(UserInformation::getUsername, Function.identity()));
+            groupCacheService.addAllGroup(result);
+                return result;
+        }
+       return resultCache;
+    }
+
+    @Override
+    public List<UserInformationForGroupReq> getGroupsWithMember(String groupId)  {
+        //List<UserInformationForGroupReq> cache= (List<UserInformationForGroupReq>) userInformationForGroupReqRepository.findAllById(Arrays.asList(groupId));
+        log.debug("getGroups call.");
+        List<UserInformationForGroupReq> result = new ArrayList<>();
+        HttpClient client = HttpClient.newHttpClient();
+        Token adminToken = null;
+        try {
+            adminToken = adminLogin();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(allThisApplicationRoleGroup + "/" + groupId + "/members"))
+                .GET()
+                .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                .build();
+
+        HttpResponse<String> response = null;
+        try {
+            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        JSONArray ja = new JSONArray(response.body());
+        ConvertJsonArrayToList utils = new ConvertJsonArrayToList();
+        ja.forEach(user -> {
+            result.add(utils.getUserInformationForGroupReq((JSONObject) user));
+        });
+        //userInformationForGroupReqRepository.save(result);
+       return result;
+    }
+
+    @Override
+    public List<RealmRoles> getRealmRoles() throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         Token adminToken = adminLogin();
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(allThisApplicationRoleGroup))
+                .uri(URI.create(realmRolesUrl))
                 .GET()
                 .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        List<GroupDto> result = new ConvertJsonArrayToList().convertJsonArrayToGroup(response.body());
+        List<RealmRoles> result = new ConvertJsonArrayToList().convertJsonArrayToRealmRoles(response.body());
         if(response.statusCode() != 200){
             log.warn("Show groups error" +response.body());
             throw new RuntimeException("Show groups error because "+response.body());
         }
-        // Map<String , UserInformation> usersMap= result.stream().collect(Collectors.toMap(UserInformation::getUsername, Function.identity()));
         return result;
     }
+
+
+    @Override
+    public List<RealmRoles> getActivityByRoleId(String groupId) throws IOException, InterruptedException {
+        //todo http://localhost:8080/admin/realms/webApplication/groups/bc40fa33-7adb-4339-a420-7c105c2a295f/role-mappings do get Roles from each group ex : Admin("createUser" , "DeleteGeneralParameter")
+        HttpClient client = HttpClient.newHttpClient();
+        Token adminToken = adminLogin();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(allThisApplicationRoleGroup+"/"+groupId+"/"+"role-mappings"))
+                .GET()
+                .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        RealmMappings result = new ConvertJsonArrayToList().convertJsonToRealmMappings(response.body());
+        if(response.statusCode() != 200){
+            log.warn("Show groups error" +response.body());
+            throw new RuntimeException("Show groups error because "+response.body());
+        }
+        return result.getRealmMappings();
+    }
+
+    @Override
+    public void addRoleMapping(GroupDto groupDto, List<RealmRoles> roles) throws IOException, InterruptedException {
+        //http://localhost:5440/auth/admin/realms/{yourRealm}/groups/8129e7ed-db5f-423b-91f5-779b9d448d3b/role-mappings/realm
+        HttpClient client = HttpClient.newHttpClient();
+        Token adminToken = adminLogin();
+        ObjectMapper mapper = new ObjectMapper();
+        String body = mapper.writeValueAsString(roles);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(allThisApplicationRoleGroup+"/"+groupDto.getId()+"/role-mappings/realm"))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                .setHeader("Content-Type" , "application/json")
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if(response.statusCode() != 204){
+            log.warn("Add roles error." +response.body());
+            throw new RuntimeException("Add roles error because "+response.body());
+        }
+    }
+
+    @Override
+    public void removeRoleMapping(GroupDto groupDto, List<RealmRoles> roles) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        Token adminToken = adminLogin();
+        ObjectMapper mapper = new ObjectMapper();
+        String body = mapper.writeValueAsString(roles);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(allThisApplicationRoleGroup+"/"+groupDto.getId()+"/role-mappings/realm"))
+                .method("DELETE" , HttpRequest.BodyPublishers.ofString(body))
+                .setHeader("Authorization", "Bearer " + adminToken.getAccess_token())
+                .setHeader("Content-Type" , "application/json")
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if(response.statusCode() != 204){
+            log.warn("Remove roles error." +response.body());
+            throw new RuntimeException("Remove roles error because "+response.body());
+        }
+    }
+
 }

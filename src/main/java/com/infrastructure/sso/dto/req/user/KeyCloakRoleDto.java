@@ -5,8 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-
 /**
  * @author SaKondri
  */
@@ -14,9 +12,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public  class Credential implements Serializable {
-    private String type;
-    private String value;
-    private boolean temporary;
+public class KeyCloakRoleDto {
+    private String id;
+    private String name;
 
 }

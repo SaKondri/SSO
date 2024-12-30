@@ -1,4 +1,4 @@
-package com.infrastructure.sso.repository;
+package com.infrastructure.sso.repository.cache;
 
 import com.infrastructure.sso.dto.Token;
 import org.springframework.data.repository.CrudRepository;
@@ -15,7 +15,6 @@ public interface TokenRepository extends CrudRepository<Token, String> {
          Token findByUsername(String username);
 
          Token findByRefreshToken(String Refresh_token);
-
-         String removeByUsername(String username);
+         String deleteByUsername(String username);
 
 }

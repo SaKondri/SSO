@@ -1,12 +1,12 @@
 package com.infrastructure.sso.dto;
 
+import com.infrastructure.sso.dto.req.RealmRoles;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author SaKondri
@@ -15,9 +15,8 @@ import java.util.ArrayList;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class GroupDto implements Serializable {
-    public String id;
-    public String name;
-    public String path;
-    public ArrayList<GroupDto> subGroups;
+public class RealmMappings {
+
+    private List<RealmRoles> realmMappings;
+
 }
